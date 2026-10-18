@@ -1,0 +1,8 @@
+# Runtime dependencies for backend.py and ui_desktop.py (Python 3.12).
+# The image model dependencies are in requirements-image-detector.txt.
+requests>=2.31,<3
+fastapi
+pydantic
+scikit-learn==1.9.0
+joblib
+customtkinter

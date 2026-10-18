@@ -74,12 +74,12 @@ If the team backend calls this from **inside the same VM**, use `http://127.0.0.
 
 These steps assume an `s390x` VM, a sudo-capable user named `linux1`, and Python 3.12. They install our wrapper and a third-party pretrained model; no model weights are stored in Git. Run commands on the VM unless the step says otherwise.
 
-1. Connect and get the team's branch. Replace the IP and branch if they change:
+1. Connect and clone the complete public submission. Replace the IP if it changes:
 
    ```bash
    ssh linux1@148.100.109.177
-   git clone --branch codex/image-detector https://github.com/ryan-3f-31303263/IBMZ2026.git
-   cd IBMZ2026
+   git clone https://github.com/ambish-creature/IBMZ2026-submission.git
+   cd IBMZ2026-submission
    ```
 
 2. Install system packages and the Python environment. On this architecture, use the official PyTorch CPU wheel index:
@@ -93,12 +93,10 @@ These steps assume an `s390x` VM, a sudo-capable user named `linux1`, and Python
      -r requirements-image-detector.txt
    ```
 
-3. Copy our wrapper to the location expected by the service, and load the model once. The first load downloads the model from Hugging Face and can take a while:
+3. Copy the image service and photo fetcher to the location expected by the service, then load the model once. The first load downloads the model from Hugging Face and can take a while:
 
    ```bash
-   cp image_ai_detector.py post_image_analysis.py /home/linux1/
-   git fetch origin tweet_extract
-   git show origin/tweet_extract:tweet_extract.py > /home/linux1/tweet_extract.py
+   cp image_ai_detector.py post_image_analysis.py tweet_extract.py /home/linux1/
    /home/linux1/image-detector-env/bin/python -c \
      'from image_ai_detector import ImageAIDetector; ImageAIDetector(); print("model ready")'
    ```

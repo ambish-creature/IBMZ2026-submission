@@ -10,7 +10,7 @@ import requests
 from tweet_extract import download_images, get_post
 
 ROOT = Path(__file__).resolve().parent
-IMAGE_DETECTOR_URL = os.getenv("IMAGE_DETECTOR_URL", "http://148.100.109.177/image/detect")
+IMAGE_DETECTOR_URL = os.getenv("IMAGE_DETECTOR_URL", "http://127.0.0.1:8082/detect")
 
 
 def fetch_tweet(url: str) -> dict:

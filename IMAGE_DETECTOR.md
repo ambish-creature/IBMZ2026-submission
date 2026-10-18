@@ -19,7 +19,7 @@ python3 image_ai_detector.py --serve
 curl -sS -X POST --data-binary @photo.jpg http://127.0.0.1:8082/detect
 ```
 
-`POST /detect` accepts raw image bytes or an HTTPS X/Twitter post URL sent as `text/plain` or JSON `{"url":"https://x.com/user/status/123"}`. For a URL, it calls the team's `tweet_extract.get_photo()`, feeds the downloaded photo bytes into the model, and returns the same JSON number, for example `0.7312`. The URL path requires `tweet_extract.py` from the teammate's branch on the same machine. `GET /health` confirms the model is loaded. The server binds to localhost by default. Files over 20 MB, images over 50 million pixels, and unsupported or corrupt formats are rejected.
+`POST /detect` accepts raw image bytes or an HTTPS X/Twitter post URL sent as `text/plain` or JSON `{"url":"https://x.com/user/status/123"}`. For a URL, it calls this repository's `tweet_extract.get_photo()`, feeds the downloaded photo bytes into the model, and returns the same JSON number, for example `0.7312`. `GET /health` confirms the model is loaded. The server binds to localhost by default. Files over 20 MB, images over 50 million pixels, and unsupported or corrupt formats are rejected.
 
 ```bash
 curl -H 'Content-Type: text/plain' --data-binary \
@@ -33,7 +33,7 @@ For public access, teammate integration, and a full LinuxONE setup guide, see [P
 
 ## Call the team's photo fetcher from Python
 
-After `tweet_extract.py` is merged onto the same machine, the integration function calls its `get_photo(post_url)`, passes the returned image bytes to the detector, and returns the float score to its caller:
+The integration function calls `get_photo(post_url)`, passes the returned image bytes to the detector, and returns the float score to its caller:
 
 ```python
 from image_ai_detector import ImageAIDetector
@@ -43,9 +43,9 @@ detector = ImageAIDetector()  # create once when the application starts
 score = score_post_image("https://x.com/example/status/123", detector)
 ```
 
-`tweet_extract.get_photo()` currently returns only the last photo if a post has multiple photos, and raises an error for a post with none. The extraction teammate should define how to handle those cases. This integration function does not copy or merge their code.
+`tweet_extract.get_photo()` returns the first photo if a post has multiple photos and returns `None` for a post with none. The integration function reports a clear error for missing photos.
 
-To run the hard-coded live smoke test on the VM, place `tweet_extract.py` from the teammate's branch next to these files and run:
+To run the hard-coded live smoke test on the VM, run:
 
 ```bash
 /home/linux1/image-detector-env/bin/python test_live_tweet_image.py

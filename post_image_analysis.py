@@ -13,8 +13,7 @@ def score_post_image(
     """Fetch one post photo, score its bytes, and return a float from 0 to 1.
 
     Pass a long-lived detector instance so the model is loaded only once.
-    The default fetcher is provided by the teammate's tweet_extract branch
-    after that branch is merged into the same working tree.
+    The default fetcher is provided by tweet_extract.py in this repository.
     """
     if fetch_photo is None:
         from tweet_extract import get_photo
