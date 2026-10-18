@@ -1,0 +1,12 @@
+[Unit]
+Description=Allow public HTTP access to the image detector gateway
+After=network.target
+Before=nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/open-image-http-port
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

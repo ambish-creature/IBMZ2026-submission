@@ -1,0 +1,14 @@
+[Unit]
+Description=Local AI-generated image detector
+After=network.target
+
+[Service]
+Type=simple
+User=linux1
+WorkingDirectory=/home/linux1
+ExecStart=/home/linux1/image-detector-env/bin/python /home/linux1/image_ai_detector.py --serve --host 127.0.0.1 --port 8082
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
