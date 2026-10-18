@@ -1,0 +1,25 @@
+# Complete Python dependency list for the project (Python 3.12).
+# LinuxONE s390x may need system/prebuilt pandas and scikit-learn packages.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Image detector
+torch==2.10.0+cpu
+transformers==5.4.0
+Pillow==10.2.0
+
+# Social post extraction and fact checking
+requests>=2.31,<3
+fastapi
+uvicorn
+pydantic
+python-dotenv
+
+# Text classifier and saved classifier.joblib model
+pandas
+scikit-learn==1.9.0
+joblib
+
+# Desktop UI and notebook
+customtkinter
+jupyterlab
+ipykernel
