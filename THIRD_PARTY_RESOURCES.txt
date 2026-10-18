@@ -1,0 +1,74 @@
+IBMZ2026 third-party resources and direct URLs
+==============================================
+
+This is a declaration of external packages, pretrained models, data, services,
+and infrastructure referenced or used by this repository. Project Python code
+is team-authored; the links below are not copied source code. requirements.txt
+is the installable package list. This file is for attribution, not pip install.
+
+PRETRAINED MODELS AND DATA
+Current image model (downloaded at runtime on the VM):
+https://huggingface.co/delpot/steganograph-ia-detector
+
+MAGE text dataset (download commands in main.ipynb; dataset files are not in Git):
+https://huggingface.co/datasets/yaful/MAGE
+https://huggingface.co/datasets/yaful/MAGE/resolve/main/train.csv
+https://huggingface.co/datasets/yaful/MAGE/resolve/main/valid.csv
+https://huggingface.co/datasets/yaful/MAGE/resolve/main/test.csv
+
+Earlier image model evaluated, not used by the current application:
+https://huggingface.co/buildborderless/CommunityForensics-DeepfakeDet-ViT
+
+PYTHON PACKAGES (all packages in requirements.txt)
+PyTorch: https://pytorch.org/
+PyTorch CPU wheel index: https://download.pytorch.org/whl/cpu
+Transformers: https://github.com/huggingface/transformers
+Pillow: https://python-pillow.org/
+Requests: https://requests.readthedocs.io/
+FastAPI: https://fastapi.tiangolo.com/
+Uvicorn: https://www.uvicorn.org/
+Pydantic: https://docs.pydantic.dev/
+python-dotenv: https://github.com/theskumar/python-dotenv
+pandas: https://pandas.pydata.org/
+scikit-learn: https://scikit-learn.org/
+joblib: https://joblib.readthedocs.io/
+CustomTkinter: https://github.com/TomSchimansky/CustomTkinter
+JupyterLab: https://jupyterlab.readthedocs.io/
+IPython kernel (ipykernel): https://ipython.readthedocs.io/en/stable/install/kernel_install.html
+NumPy (used by the scientific Python stack and VM setup): https://numpy.org/
+Python and pip: https://www.python.org/ and https://pip.pypa.io/
+
+EXTERNAL SERVICES AND PLATFORMS
+FxTwitter/FxEmbed post API used by tweet_extract.py:
+https://api.fxtwitter.com/
+https://github.com/FxEmbed/FxEmbed
+
+Wikipedia search API used by fact_checker/app.py:
+https://en.wikipedia.org/w/api.php
+https://www.mediawiki.org/wiki/API:Search
+
+X/Twitter public posts and attached media are user-supplied input, not project data:
+https://x.com/
+https://pbs.twimg.com/
+
+IBM LinuxONE Community Cloud VM hosting the image detector:
+https://linuxone.cloud.marist.edu/
+Ubuntu server operating system: https://ubuntu.com/
+
+Nginx reverse proxy described in PUBLIC_IMAGE_API.md:
+https://nginx.org/
+Certbot (optional HTTPS setup documented there, not required for the demo):
+https://certbot.eff.org/
+
+GitHub repository hosting the team's code:
+https://github.com/ryan-3f-31303263/IBMZ2026
+Public submission copy:
+https://github.com/ambish-creature/IBMZ2026-submission
+
+DEMO INPUTS REFERENCED IN THIS REPOSITORY
+https://x.com/icreatelife/status/2098789935071322416
+https://x.com/JoeBiden/status/2096966644870394260
+
+Python standard-library modules (for example sqlite3, tkinter, http.server,
+json, pathlib, and urllib) come with Python rather than requirements.txt:
+https://docs.python.org/3/library/
