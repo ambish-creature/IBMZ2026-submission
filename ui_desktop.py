@@ -8,27 +8,7 @@ Two screens, one window:
 
 What this file owns
     - The window, both screens, moving between them, and the colour themes
-What it does NOT own (other team members' parts)
-    - Fetching a tweet from a URL                    -> fetch_tweet()
-    - Claim extraction, search, verdict logic        -> check_claim()
-
-How to plug in the other components
-    Create backend.py next to this file and define either function.
-    This file imports them if they exist and falls back to mocks otherwise,
-    so the UI always runs.
-
-Contract for fetch_tweet(url: str) -> dict
-    {"author": str, "text": str}       # raise ValueError("friendly message") on failure
-
-Contract for check_claim(tweet_text: str) -> dict
-    {
-      "claim":      str,               # the claim that was extracted
-      "verdict":    str,               # key of VERDICTS below
-      "confidence": float,             # 0.0 - 1.0
-      "summary":    str,               # 1-2 plain-language sentences
-      "method":     str,               # short "how we checked this" (optional)
-    }
-    Any extra keys (e.g. evidence lists) are ignored by this UI.
+The backend module fetches the post and returns fact-check, source, and model results.
 
 Theme design rules (see THEME_SPECS and build_theme)
     - Any palette colour can be the page background. Themes come in three kinds:
@@ -57,17 +37,14 @@ from pathlib import Path
 
 try:
     import customtkinter as ctk
-except ImportError:
-    sys.exit("This UI needs CustomTkinter. Install it with:  pip install customtkinter")
+except (ImportError, ModuleNotFoundError) as exc:
+    sys.exit(f"Desktop UI needs CustomTkinter and a Python build with Tk: {exc}")
 
 # --------------------------------------------------------------------------
 # Plug-in points (use the team's real functions if backend.py provides them)
 # --------------------------------------------------------------------------
 
-try:
-    import backend as _backend
-except ImportError:
-    _backend = None
+import backend as _backend
 
 # Fixed verdict colours (independent of the theme)
 VERDICTS = {
@@ -80,46 +57,7 @@ VERDICTS = {
 }
 
 
-def _mock_fetch_tweet(url: str) -> dict:
-    """Placeholder so the UI runs before the backend exists."""
-    if "reef" in url.lower():
-        return {"author": "@example_user",
-                "text": "The Great Barrier Reef is the largest coral reef system in the world."}
-    return {"author": "@example_user",
-            "text": "Scientists have confirmed that drinking lemon water cures all infections."}
-
-
-def _mock_check_claim(tweet_text: str) -> dict:
-    import time
-    time.sleep(1.2)  # pretend to work so the loading state is visible
-    text = tweet_text.lower()
-    if "cures all" in text:
-        return {
-            "claim": "Lemon water cures all infections",
-            "verdict": "false",
-            "confidence": 0.9,
-            "summary": "No reliable evidence supports this; infections need specific treatments.",
-            "method": "Extracted one claim, searched medical and fact-check sources, compared findings.",
-        }
-    if "great barrier reef" in text:
-        return {
-            "claim": "The Great Barrier Reef is the largest coral reef system in the world",
-            "verdict": "mostly_true",
-            "confidence": 0.85,
-            "summary": "Widely documented as the largest, though exact measures vary by source.",
-            "method": "Extracted one claim, checked encyclopedic and scientific sources.",
-        }
-    return {
-        "claim": tweet_text[:120],
-        "verdict": "unverifiable",
-        "confidence": 0.3,
-        "summary": "Not enough reliable evidence found to rate this claim.",
-        "method": "Extracted claim and searched, but found no sufficient sources.",
-    }
-
-
-fetch_tweet = getattr(_backend, "fetch_tweet", _mock_fetch_tweet)
-check_claim = getattr(_backend, "check_claim", _mock_check_claim)
+analyze_post = _backend.analyze_post
 
 # --------------------------------------------------------------------------
 # Colour helpers and themes
@@ -271,11 +209,13 @@ ERROR = "#B42318"
 CONTENT_WIDTH = 640          # width of the result column
 WRAP = CONTENT_WIDTH - 80    # text wrap inside cards
 
-TWEET_URL = re.compile(r"^https?://(www\.|mobile\.)?(x|twitter)\.com/[^/\s]+/status/\d+", re.IGNORECASE)
-
-
 def is_tweet_url(url: str) -> bool:
-    return bool(TWEET_URL.match(url.strip()))
+    try:
+        from tweet_extract import parse_post_url
+        parse_post_url(url)
+        return True
+    except ValueError:
+        return False
 
 
 # --------------------------------------------------------------------------
@@ -425,8 +365,19 @@ class FactCheckApp(ctk.CTk):
         self.result_body = body
 
         self._tweet_card(body, author, tweet)
-        self._verdict_card(body, result)
-        self._method_section(body, result.get("method", ""))
+        fact = result.get("fact_check")
+        if fact:
+            self._verdict_card(body, fact)
+            self._source_section(body, fact)
+            self._method_section(body, fact.get("method", ""))
+        self._signal_card(body, "AI-written text signal", result.get("ai_text_score"),
+                          "Classifier estimate; it does not prove who wrote this post.")
+        if result["post"]["photo_urls"]:
+            self._signal_card(body, "AI-generated image signal", result.get("ai_image_score"),
+                              "Image model estimate for the first attached photo.")
+        for component, error in result.get("errors", {}).items():
+            ctk.CTkLabel(body, text=f"{component}: unavailable ({error})", text_color=ERROR,
+                         wraplength=WRAP).pack(anchor="w", pady=4)
 
         ctk.CTkLabel(self, text="Results are AI-generated and can be wrong. Always check the original sources.",
                      font=ctk.CTkFont(size=12), text_color=c["muted"], wraplength=WRAP,
@@ -447,7 +398,8 @@ class FactCheckApp(ctk.CTk):
 
     def _verdict_card(self, parent, result):
         v = VERDICTS.get(result.get("verdict"), VERDICTS["unverifiable"])
-        confidence = max(0.0, min(1.0, float(result.get("confidence", 0))))
+        raw_confidence = result.get("confidence")
+        confidence = max(0.0, min(1.0, float(raw_confidence))) if raw_confidence is not None else None
 
         card = ctk.CTkFrame(parent, fg_color=v["bg"], corner_radius=16)
         card.pack(fill="x", pady=(0, 14))
@@ -456,12 +408,14 @@ class FactCheckApp(ctk.CTk):
                      font=ctk.CTkFont(size=28, weight="bold")).pack(anchor="w", padx=22, pady=(18, 2))
 
         # verdict-card text uses fixed neutral colours so it is readable in every theme
-        ctk.CTkLabel(card, text=f"Confidence {int(confidence * 100)}%", text_color="#475467",
+        ctk.CTkLabel(card, text=(f"Confidence {int(confidence * 100)}%" if confidence is not None
+                                  else "No verified confidence score"), text_color="#475467",
                      font=ctk.CTkFont(size=13)).pack(anchor="w", padx=22)
-        bar = ctk.CTkProgressBar(card, height=8, corner_radius=4,
-                                 progress_color=v["color"], fg_color="#FFFFFF")
-        bar.set(confidence)
-        bar.pack(fill="x", padx=22, pady=(6, 14))
+        if confidence is not None:
+            bar = ctk.CTkProgressBar(card, height=8, corner_radius=4,
+                                     progress_color=v["color"], fg_color="#FFFFFF")
+            bar.set(confidence)
+            bar.pack(fill="x", padx=22, pady=(6, 14))
 
         ctk.CTkLabel(card, text="Claim checked", text_color="#475467",
                      font=ctk.CTkFont(size=12)).pack(anchor="w", padx=22)
@@ -470,6 +424,35 @@ class FactCheckApp(ctk.CTk):
                      ).pack(anchor="w", padx=22, pady=(2, 10))
         ctk.CTkLabel(card, text=result.get("summary", ""), text_color="#101828", wraplength=WRAP,
                      justify="left", font=ctk.CTkFont(size=15)).pack(anchor="w", padx=22, pady=(0, 18))
+
+    def _signal_card(self, parent, title, score, explanation):
+        c = self.c
+        card = ctk.CTkFrame(parent, fg_color=c["card"], corner_radius=16)
+        card.pack(fill="x", pady=(0, 14))
+        label = f"{score * 100:.1f}%" if score is not None else "Unavailable"
+        ctk.CTkLabel(card, text=f"{title}: {label}", text_color=c["text"],
+                     font=ctk.CTkFont(size=18, weight="bold")).pack(anchor="w", padx=22, pady=(16, 4))
+        ctk.CTkLabel(card, text=explanation, text_color=c["muted"],
+                     wraplength=WRAP).pack(anchor="w", padx=22, pady=(0, 16))
+
+    def _source_section(self, parent, fact):
+        c = self.c
+        sources = fact.get("sources", [])
+        leads = fact.get("external_sources", [])
+        if not sources and not leads:
+            return
+        card = ctk.CTkFrame(parent, fg_color=c["card"], corner_radius=16)
+        card.pack(fill="x", pady=(0, 14))
+        ctk.CTkLabel(card, text="Sources and research leads", text_color=c["text"],
+                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=22, pady=(14, 6))
+        for source in sources[:3]:
+            ctk.CTkLabel(card, text=f"Reviewed: {source.get('title', '')} — {source.get('url', '')}",
+                         text_color=c["text"], wraplength=WRAP, justify="left").pack(anchor="w", padx=22)
+        for source in leads[:3]:
+            ctk.CTkLabel(card, text=f"Research lead: {source.get('title', '')} — {source.get('url', '')}",
+                         text_color=c["muted"], wraplength=WRAP, justify="left").pack(anchor="w", padx=22)
+        ctk.CTkLabel(card, text="Research leads do not verify a claim.", text_color=c["muted"]
+                     ).pack(anchor="w", padx=22, pady=(6, 14))
 
     def _method_section(self, parent, method):
         if not method:
@@ -533,8 +516,8 @@ class FactCheckApp(ctk.CTk):
 
     def _work(self, url):
         try:
-            fetched = fetch_tweet(url)
-            result = check_claim(fetched["text"])
+            result = analyze_post(url)
+            fetched = result["post"]
             self.jobs.put(("ok", fetched.get("author", ""), fetched["text"], result))
         except Exception as exc:
             self.jobs.put(("error", str(exc) or "Something went wrong. Please try again."))
